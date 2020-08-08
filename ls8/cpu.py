@@ -3,9 +3,11 @@
 import sys
 import fileio
 
-HLT = 0b00000001
-LDI = 0b10000010
-PRN = 0b01000111
+HLT = 0b0001
+LDI = 0b0010
+PRN = 0b0111
+ADD = 0b0000
+MUL = 0b0010
 
 class CPU:
     """Main CPU class."""
@@ -39,9 +41,11 @@ class CPU:
     def alu(self, op, reg_a, reg_b):
         """ALU operations."""
 
-        if op == "ADD":
+        if op == ADD:
             self.reg[reg_a] += self.reg[reg_b]
         #elif op == "SUB": etc
+        elif op == MUL:
+            self.reg[reg_a] *= self.reg[reg_b]
         else:
             raise Exception("Unsupported ALU operation")
 
@@ -69,18 +73,27 @@ class CPU:
         """Run the CPU."""
         self.ir = self.ram[self.pc]
 
-        while self.ir != HLT:
+        command = self.ir & 0b00001111
+
+        while command != HLT:
 
             self.ir = self.ram[self.pc]
 
-            if self.ir == LDI:
-                register = self.ram_read(self.pc + 1)
-                value = self.ram_read(self.pc + 2)
-                self.reg[register] = value
-                self.pc +=   3
+            num_operands = self.ir >> 6
+            is_alu = self.ir >> 5 & 0b00000001
+            command = self.ir & 0b00001111
 
-            if self.ir == PRN:
-                register = self.ram_read(self.pc + 1)
-                value = self.reg[register]
-                print(value)
-                self.pc += 2
+            if is_alu:
+                self.alu(command, self.ram_read(self.pc + 1), self.ram_read(self.pc + 2))
+            else:
+                if command == LDI:
+                    register = self.ram_read(self.pc + 1)
+                    value = self.ram_read(self.pc + 2)
+                    self.reg[register] = value
+
+                if command == PRN:
+                    register = self.ram_read(self.pc + 1)
+                    value = self.reg[register]
+                    print(value)
+                
+            self.pc += num_operands + 1
